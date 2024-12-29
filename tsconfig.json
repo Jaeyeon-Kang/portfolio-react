@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "esnext" /* 최신 JavaScript 문법 사용 */,
+    "module": "esnext" /* CommonJS 모듈 사용 */,
+    "jsx": "react-jsx" /* React JSX 변환 사용 */,
+    "lib": ["dom", "esnext"] /* 최신 DOM 및 ESNext 기능 사용 */,
+    "esModuleInterop": true /* CommonJS 모듈과 호환성 유지 */,
+    "allowSyntheticDefaultImports": true /* 기본 내보내기 없는 모듈도 가져오기 허용 */,
+    "moduleResolution": "node" /* Node.js 방식 모듈 해결 */,
+    "forceConsistentCasingInFileNames": true /* 대소문자 일관성 유지 */,
+    "strict": true /* 모든 엄격한 타입 검사 옵션 활성화 */,
+    "skipLibCheck": true /* 라이브러리 파일에 대한 타입 검사 건너뜀 */
+  },
+  "include": ["src"] /* 컴파일할 파일 경로 */,
+  "exclude": ["node_modules"] /* 제외할 폴더 */
+}
