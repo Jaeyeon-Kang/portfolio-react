@@ -1,60 +1,45 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-const POKEMON_LIMIT = 50; // 전체 포켓몬 수 제한
-const POKEMON_PER_PAGE = 2; // 한 페이지당 포켓몬 수
-const PAGES_PER_GROUP = 10; // 페이지 그룹당 표시할 페이지 수
+const TOTAL_POKEMON = 100; // 전체 포켓몬 수 제한
+const POKEMON_PER_PAGE = 10; // 한 페이지당 포켓몬 수
+const PAGES_PER_GROUP = 5; // 페이지 그룹당 표시할 페이지 수
 const POKEMON_API_URL = "https://pokeapi.co/api/v2/pokemon/";
 
 interface Pokemon {
+  id: number;
   name: string;
-  image: string;
+  height: number;
+  weight: number;
+  baseExperience: number;
 }
 
 const Pagination: React.FC = () => {
-  const [cachedPokemon, setCachedPokemon] = useState<Map<number, Pokemon[]>>(
-    new Map()
-  ); // 캐싱된 포켓몬 데이터
   const [currentPokemon, setCurrentPokemon] = useState<Pokemon[]>([]); // 현재 페이지의 포켓몬 데이터
   const [currentPage, setCurrentPage] = useState<number>(1); // 현재 페이지
-  const [currentPageGroup, setCurrentPageGroup] = useState<number>(0); // 페이지 그룹 관리
   const [loading, setLoading] = useState<boolean>(false); // 로딩 상태
   const [error, setError] = useState<string | null>(null); // 에러 상태
 
-  // 페이지 그룹에 해당하는 데이터 가져오기
-  const fetchPokemonByGroup = async (pageGroup: number) => {
-    if (cachedPokemon.has(pageGroup)) {
-      // 캐싱된 데이터 사용
-      setCurrentPokemon(cachedPokemon.get(pageGroup) || []);
-      return; // 로딩 상태 건너뜀
-    }
-
+  // 현재 페이지에 해당하는 데이터를 서버에서 가져오기
+  const fetchPokemonByPage = async (pageNumber: number) => {
     setLoading(true);
     setError(null);
 
-    const start = pageGroup * PAGES_PER_GROUP * POKEMON_PER_PAGE;
-    const end = Math.min(
-      start + PAGES_PER_GROUP * POKEMON_PER_PAGE,
-      POKEMON_LIMIT
-    );
-
     try {
-      const responses = await Promise.all(
-        Array.from({ length: end - start }, (_, index) =>
-          fetch(`${POKEMON_API_URL}${start + index + 1}`).then((res) =>
-            res.json()
-          )
-        )
+      const startId = (pageNumber - 1) * POKEMON_PER_PAGE + 1; // 시작 ID
+      const pokemonPromises = Array.from({ length: POKEMON_PER_PAGE }, (_, i) =>
+        axios.get(`${POKEMON_API_URL}${startId + i}`)
       );
+      const responses = await Promise.all(pokemonPromises);
 
-      const pokemonData = responses.map((data) => ({
-        name: data.name,
-        image: data.sprites.front_default,
+      const pokemonData = responses.map((response) => ({
+        id: response.data.id,
+        name: response.data.name,
+        height: response.data.height,
+        weight: response.data.weight,
+        baseExperience: response.data.base_experience,
       }));
 
-      // 데이터 캐싱
-      setCachedPokemon((prevCache) =>
-        new Map(prevCache).set(pageGroup, pokemonData)
-      );
       setCurrentPokemon(pokemonData);
     } catch (err) {
       console.error("Failed to fetch Pokémon data:", err);
@@ -64,131 +49,162 @@ const Pagination: React.FC = () => {
     }
   };
 
-  // 초기 데이터 로드 및 페이지 그룹 변경 시 데이터 가져오기
+  // 페이지 변경 시 데이터 가져오기
   useEffect(() => {
-    fetchPokemonByGroup(currentPageGroup);
-  }, [currentPageGroup]);
-
-  // 현재 페이지의 데이터 계산
-  const getCurrentPokemon = () =>
-    currentPokemon.slice(
-      ((currentPage - 1) % PAGES_PER_GROUP) * POKEMON_PER_PAGE,
-      (((currentPage - 1) % PAGES_PER_GROUP) + 1) * POKEMON_PER_PAGE
-    );
+    fetchPokemonByPage(currentPage);
+  }, [currentPage]);
 
   // 전체 페이지 수 계산
-  const totalPages = Math.ceil(POKEMON_LIMIT / POKEMON_PER_PAGE);
+  const totalPages = Math.ceil(TOTAL_POKEMON / POKEMON_PER_PAGE);
 
   // 현재 페이지 그룹의 시작/끝 계산
+  const currentPageGroup = Math.floor((currentPage - 1) / PAGES_PER_GROUP);
   const startPage = currentPageGroup * PAGES_PER_GROUP + 1;
   const endPage = Math.min(startPage + PAGES_PER_GROUP - 1, totalPages);
 
   // 페이지네이션 변경 함수
   const handlePageChange = (pageNumber: number) => setCurrentPage(pageNumber);
+
   const handleNextPageGroup = () => {
     if (endPage < totalPages) {
-      setCurrentPageGroup(currentPageGroup + 1);
-    }
-  };
-  const handlePrevPageGroup = () => {
-    if (currentPageGroup > 0) {
-      setCurrentPageGroup(currentPageGroup - 1);
+      setCurrentPage(startPage + PAGES_PER_GROUP);
     }
   };
 
-  // 페이지네이션 버튼 그룹 컴포넌트
-  const PaginationButtons: React.FC = () => (
-    <div className="flex space-x-2 mt-4 items-center">
-      {/* 이전 페이지 그룹 */}
-      {currentPageGroup > 0 && (
-        <button
-          onClick={handlePrevPageGroup}
-          className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
-        >
-          &lt;
-        </button>
-      )}
-      {/* 현재 페이지 그룹 */}
-      {[...Array(endPage - startPage + 1)].map((_, idx) => {
-        const pageNumber = startPage + idx;
-        return (
+  const handlePrevPageGroup = () => {
+    if (currentPageGroup > 0) {
+      setCurrentPage(startPage - PAGES_PER_GROUP);
+    }
+  };
+
+  // UI 렌더링
+  return (
+    <div className="p-4 max-w-screen-lg mx-auto">
+      <h1 className="text-2xl font-bold mb-4 text-center">Pokémon Table</h1>
+
+      <div className="relative overflow-x-auto">
+        <table className="table-auto border-collapse border border-gray-300 w-full text-center shadow-lg rounded-lg">
+          <thead>
+            <tr className="bg-blue-200">
+              <th className="border border-gray-300 px-4 py-2 w-1/12 text-sm">
+                ID
+              </th>
+              <th className="border border-gray-300 px-4 py-2 w-2/12 text-sm">
+                Name
+              </th>
+              <th className="border border-gray-300 px-4 py-2 w-3/12 text-sm">
+                Height
+              </th>
+              <th className="border border-gray-300 px-4 py-2 w-3/12 text-sm">
+                Weight
+              </th>
+              <th className="border border-gray-300 px-4 py-2 w-3/12 text-sm">
+                Base Experience
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentPokemon.map((poke) => (
+              <tr
+                key={poke.id}
+                className="hover:bg-gray-100 transition duration-200"
+              >
+                <td className="border border-gray-300 px-4 py-2">{poke.id}</td>
+                <td className="border border-gray-300 px-4 py-2 capitalize">
+                  {poke.name}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {poke.height}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {poke.weight}
+                </td>
+                <td className="border border-gray-300 px-4 py-2">
+                  {poke.baseExperience}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 페이지네이션 버튼 */}
+      <div className="flex justify-center mt-4 space-x-2">
+        {currentPageGroup > 0 && (
           <button
-            key={pageNumber}
-            onClick={() => handlePageChange(pageNumber)}
+            onClick={handlePrevPageGroup}
+            className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
+          >
+            &lt;
+          </button>
+        )}
+        {Array.from(
+          { length: endPage - startPage + 1 },
+          (_, i) => startPage + i
+        ).map((page) => (
+          <button
+            key={page}
+            onClick={() => handlePageChange(page)}
             className={`px-3 py-1 border rounded ${
-              currentPage === pageNumber
+              currentPage === page
                 ? "bg-blue-500 text-white"
                 : "bg-gray-200 hover:bg-gray-300"
             }`}
           >
-            {pageNumber}
+            {page}
           </button>
-        );
-      })}
-      {/* 다음 페이지 그룹 */}
-      {endPage < totalPages && (
-        <button
-          onClick={handleNextPageGroup}
-          className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
-        >
-          &gt;
-        </button>
-      )}
-    </div>
-  );
-
-  const SkeletonLoader = () => (
-    <div className="w-20 h-20 bg-gray-200 animate-pulse mx-auto"></div>
-  );
-
-  // UI 렌더링
-  return (
-    <div className="p-4">
-      <div className="flex flex-col items-center">
-        {loading && !cachedPokemon.has(currentPageGroup) ? (
-          <p>Loading...</p>
-        ) : error ? (
-          <p className="text-red-500">{error}</p>
-        ) : (
-          <div className="flex flex-wrap justify-center w-full gap-1 ">
-            {getCurrentPokemon().map((poke, index) => (
-              <div
-                key={index}
-                className="flex flex-col items-center justify-center w-1/3 p-4 bg-white rounded-lg shadow-lg "
-              >
-                {poke.image ? (
-                  <>
-                    <h3 className="text-xl capitalize mb-2">{poke.name}</h3>
-                    <img
-                      src={poke.image}
-                      alt={poke.name}
-                      className="w-20 h-20 mx-auto duration-75"
-                    />
-                  </>
-                ) : (
-                  <SkeletonLoader />
-                )}
-              </div>
-            ))}
-          </div>
+        ))}
+        {endPage < totalPages && (
+          <button
+            onClick={handleNextPageGroup}
+            className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
+          >
+            &gt;
+          </button>
         )}
-
-        <PaginationButtons />
       </div>
-      <p className="mt-6 text-left text-gray-700 text-sm leading-relaxed max-w-xl">
-        해당 페이지네이션 로직에서는{" "}
-        <span className="font-semibold">
-          currentPage와 currentPageGroup 라는 상태를 사용합니다.
-        </span>
-        <br />
-        <span className="font-semibold text-blue-600">currentPage</span>는 현재
-        사용자가 보고 있는 페이지 번호이자 currentPageGroup을 계산하는데
-        사용됩니다. <br />
-        <span className="font-semibold text-blue-600">currentPageGroup</span>은
-        페이지네이션 버튼을 그룹 단위(ex. 1부터 10까지의 페이지 그룹)로 묶는 데
-        사용되며, 해당 단위로 API 요청을 하여 데이터를 불러옵니다. 이를 통해
-        데이터를 효율적으로 관리하고 빠르게 화면에 표시합니다.
-      </p>
+
+      {/* 설명 부분 */}
+      <div className="mt-6 text-sm text-gray-700 max-w-2xl mx-auto leading-relaxed">
+        <p className="mb-4">
+          <span className="font-bold text-blue-500">처음</span>에는 데이터를 한
+          번에 모두 가져와서 클라이언트에서 관리하는 방식으로 페이지네이션을
+          구현했어요. 성능을 높이기 위해 캐시를 활용했는데,{" "}
+          <span className="font-semibold text-gray-900">
+            데이터 양이 많아질수록 메모리 사용량이 증가하고, 캐시가 유지되는
+            동안 불필요한 데이터가 많아져 로딩 속도가 느려지는 문제가
+            발생했어요.
+          </span>
+        </p>
+        <p className="mb-4">
+          <span className="font-bold text-blue-500">
+            이 문제를 해결하기 위해
+          </span>{" "}
+          <span className="bg-yellow-100 px-2 py-1 rounded">
+            서버사이드 페이지네이션
+          </span>
+          으로 전환했어요. 필요한 데이터만 서버에서 가져오는 방식이라 데이터가
+          많아도 효율적으로 처리할 수 있었죠. 하지만 처음엔 offset 기반
+          페이지네이션을 사용했는데,{" "}
+          <span className="font-semibold text-gray-900">
+            offset 값이 커질수록 서버가 데이터를 건너뛰는 데 시간이 많이 걸려
+            성능에 부담이 생기는 문제가 있었어요.
+          </span>
+        </p>
+        <p>
+          <span className="font-bold text-blue-500">그래서</span>{" "}
+          <span className="bg-green-100 px-2 py-1 rounded">
+            id 기반(커서 기반)
+          </span>{" "}
+          페이지네이션으로 바꿔봤어요. id를 기준으로 필요한 데이터만 요청하는
+          방식이라{" "}
+          <span className="font-semibold text-gray-900">
+            서버 부하를 줄이고, 더 빠르게 데이터를 처리
+          </span>
+          할 수 있었어요. 덕분에 페이지네이션 시스템이 훨씬 안정적이고
+          효율적으로 작동하게 되었어요.
+        </p>
+      </div>
     </div>
   );
 };
