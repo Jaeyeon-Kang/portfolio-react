@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { fetchPokemonData } from "../api/pokemon";
 
 const TOTAL_POKEMON = 100; // 전체 포켓몬 수 제한
 const POKEMON_PER_PAGE = 10; // 한 페이지당 포켓몬 수
@@ -20,27 +20,25 @@ const Pagination: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false); // 로딩 상태
   const [error, setError] = useState<string | null>(null); // 에러 상태
 
-  // 현재 페이지에 해당하는 데이터를 서버에서 가져오기
   const fetchPokemonByPage = async (pageNumber: number) => {
     setLoading(true);
     setError(null);
-
+    // await new Promise((resolve) => setTimeout(resolve, 1000));
     try {
-      const startId = (pageNumber - 1) * POKEMON_PER_PAGE + 1; // 시작 ID
-      const pokemonPromises = Array.from({ length: POKEMON_PER_PAGE }, (_, i) =>
-        axios.get(`${POKEMON_API_URL}${startId + i}`)
-      );
-      const responses = await Promise.all(pokemonPromises);
+      const result = await fetchPokemonData<Pokemon>({
+        url: POKEMON_API_URL,
+        pageParam: pageNumber - 1, // 0-based index로 변환
+        limit: POKEMON_PER_PAGE,
+        dataMapper: (data) => ({
+          id: data.id,
+          name: data.name,
+          height: data.height,
+          weight: data.weight,
+          baseExperience: data.base_experience,
+        }),
+      });
 
-      const pokemonData = responses.map((response) => ({
-        id: response.data.id,
-        name: response.data.name,
-        height: response.data.height,
-        weight: response.data.weight,
-        baseExperience: response.data.base_experience,
-      }));
-
-      setCurrentPokemon(pokemonData);
+      setCurrentPokemon(result.data);
     } catch (err) {
       console.error("Failed to fetch Pokémon data:", err);
       setError("Failed to fetch Pokémon data. Please try again later.");

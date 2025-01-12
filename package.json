@@ -4,16 +4,18 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query-devtools": "^5.64.0",
     "axios": "^1.7.9",
     "framer-motion": "^11.15.0",
     "is-dev": "^0.1.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-intersection-observer": "^9.14.1",
     "react-resizable": "^3.0.5",
     "react-router-dom": "^7.1.1"
   },
