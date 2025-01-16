@@ -81,7 +81,7 @@ const Pagination: React.FC = () => {
       <h1 className="text-2xl font-bold mb-4 text-center">Pokémon Table</h1>
 
       <div className="relative overflow-x-auto">
-        <table className="table-auto border-collapse border border-gray-300 w-full text-center shadow-lg rounded-lg">
+        <table className="table-auto border-collapse border  border-gray-300 w-full text-center shadow-lg rounded-lg">
           <thead>
             <tr className="bg-blue-200">
               <th className="border border-gray-300 px-4 py-2 w-1/12 text-sm">
@@ -163,7 +163,7 @@ const Pagination: React.FC = () => {
       </div>
 
       {/* 설명 부분 */}
-      <div className="mt-6 text-sm text-gray-700 max-w-2xl mx-auto leading-relaxed">
+      {/* <div className="mt-6 text-sm text-gray-700 mx-auto w-full max-w-screen-lg break-words">
         <p className="mb-4">
           <span className="font-bold text-blue-500">처음</span>에는 데이터를 한
           번에 모두 가져와서 클라이언트에서 관리하는 방식으로 페이지네이션을
@@ -202,7 +202,7 @@ const Pagination: React.FC = () => {
           할 수 있었어요. 덕분에 페이지네이션 시스템이 훨씬 안정적이고
           효율적으로 작동하게 되었어요.
         </p>
-      </div>
+      </div> */}
     </div>
   );
 };
